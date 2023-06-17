@@ -1,5 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:temperature_and_humidity_monitoring/const/custom_styles.dart';
+import 'package:temperature_and_humidity_monitoring/models/monitor_model.dart';
 import 'package:temperature_and_humidity_monitoring/widgets/suggestion.dart';
 
 import '../widgets/sensor_card.dart';
@@ -22,73 +28,103 @@ class _HomeScreenState extends State<HomeScreen> {
       "rhList": <double>[3, 9, 3, 5, 1],
     },
   ];
+
+  StreamController<MonitorModel> _streamController = StreamController();
+
+  @override
+  void initState() {
+    super.initState();
+    Timer.periodic(const Duration(seconds: 3), (timer) {
+      getApi();
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _streamController.close();
+  }
+
+  Future<void> getApi() async {
+    var url = Uri.parse('https://factus.serveo.net/');
+    final response = await http.get(url);
+    final data = json.decode(response.body).first;
+
+    log("called");
+
+    MonitorModel monitorModel = MonitorModel.fromJson(data);
+    _streamController.sink.add(monitorModel);
+  }
+
   int _value = 1;
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(builder: (context, snapshots) {
-      // if (snapshots.hasError) {
-      //   return const Center(
-      //     child: Text('Something went wrong'),
-      //   );
-      // }
+    return StreamBuilder<MonitorModel>(
+        stream: _streamController.stream,
+        builder: (context, snapshots) {
+          if (snapshots.hasError) {
+            return const Center(
+              child: Text('Something went wrong'),
+            );
+          }
 
-      // if (!snapshots.hasData) {
-      //   return const Center(
-      //     child: CircularProgressIndicator(),
-      //   );
-      // }
+          if (!snapshots.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
 
-      final rhList = fakeData[_value - 1]['rhList'] as List<double>;
-      final tempList = fakeData[_value - 1]['tempList'] as List<double>;
+          final data = snapshots.requireData;
+          final rhList = [data.humidity];
+          final tempList = [data.temperature];
 
-      return Scaffold(
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            vertical: 60,
-            horizontal: 16,
-          ),
-          child: Column(
-            children: [
-              const Text(
-                "Temperature and Humidity Monitoring System",
-                style: kHeadline,
-                textAlign: TextAlign.center,
+          return Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                vertical: 60,
+                horizontal: 16,
               ),
-              const SizedBox(
-                height: 20,
+              child: Column(
+                children: [
+                  const Text(
+                    "T&H Monitoring System",
+                    style: kHeadline,
+                    textAlign: TextAlign.center,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        for (int i = 1; i <= fakeData.length; i++)
+                          ChoiceChip(
+                            label: Text('Chip $i'),
+                            labelStyle: TextStyle(
+                                color:
+                                    _value == i ? Colors.white : Colors.black),
+                            selected: _value == i,
+                            selectedColor: Colors.blueAccent,
+                            onSelected: (bool selected) {
+                              setState(() {
+                                _value = i;
+                              });
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                  _HumidityAndTemperature(rhList: rhList, tempList: tempList),
+                  Text("Feeling like: ${data.feelLike}"),
+                  const Suggestion(
+                    temperature: 8,
+                    humidity: 3,
+                  ),
+                ],
               ),
-              _HumidityAndTemperature(rhList: rhList, tempList: tempList),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    for (int i = 1; i <= fakeData.length; i++)
-                      ChoiceChip(
-                        label: Text('Chip $i'),
-                        labelStyle: TextStyle(
-                            color: _value == i ? Colors.white : Colors.black),
-                        selected: _value == i,
-                        selectedColor: Colors.blueAccent,
-                        onSelected: (bool selected) {
-                          setState(() {
-                            _value = i;
-                          });
-                        },
-                      ),
-                  ],
-                ),
-              ),
-              const Suggestion(
-                temperature: 8,
-                humidity: 3,
-              ),
-            ],
-          ),
-        ),
-      );
-    });
+            ),
+          );
+        });
   }
 }
 
