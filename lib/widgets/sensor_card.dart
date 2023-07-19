@@ -1,4 +1,3 @@
-import 'package:chart_sparkline/chart_sparkline.dart';
 import 'package:flutter/material.dart';
 
 import '../const/constant.dart';
@@ -10,14 +9,12 @@ class SensorCard extends StatelessWidget {
       required this.name,
       required this.assetImage,
       required this.unit,
-      required this.trendData,
       required this.linePoint})
       : super(key: key);
 
   final double value;
   final String name;
   final String unit;
-  final List<double> trendData;
   final Color linePoint;
   final AssetImage assetImage;
 
@@ -30,54 +27,72 @@ class SensorCard extends StatelessWidget {
         shadowColor: Colors.white,
         elevation: 24,
         color: kMainBG,
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.8,
-          height: 200,
-          child: Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Image(
-                      width: 60,
-                      image: assetImage,
+        child: Stack(
+          children: [
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.8,
+              height: 150,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image(
+                          width: 60,
+                          image: assetImage,
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Text(name,
+                            style: kBodyText.copyWith(color: Colors.white)),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                      ],
                     ),
-                    const SizedBox(
-                      height: 10,
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 30, horizontal: 8),
+                      child: Text('${value.round()}$unit',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 50,
+                            fontWeight: FontWeight.bold,
+                          )),
                     ),
-                    Text(name, style: kBodyText.copyWith(color: Colors.white)),
-                    const SizedBox(
-                      height: 10,
-                    ),
-                    Text('${value.round()}$unit',
-                        style: kHeadline.copyWith(color: Colors.white)),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Expanded(
-                flex: 1,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 30, horizontal: 8),
-                  child: Sparkline(
-                    data: trendData,
-                    lineWidth: 5.0,
-                    lineColor: Colors.white,
-                    averageLine: true,
-                    fillMode: FillMode.above,
-                    sharpCorners: false,
-                    pointsMode: PointsMode.last,
-                    pointSize: 20,
-                    pointColor: linePoint,
-                    useCubicSmoothing: true,
+            ),
+            Positioned(
+              right: 0,
+              child: IconButton(
+                onPressed: () => showDialog<String>(
+                  context: context,
+                  builder: (BuildContext context) => AlertDialog(
+                    title: const Text('Temperature'),
+                    content: const Text(
+                        'The amount of water vapor in the air. If there is a lot of water vapor in the air, the humidity will be high. The higher the humidity, the wetter it feels outside.'),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Understand'),
+                      ),
+                    ],
                   ),
                 ),
+                icon: const Icon(Icons.info_outline,
+                    color: Color.fromARGB(255, 141, 244, 144)),
               ),
-            ],
-          ),
+            ),
+          ],
         ));
   }
 }

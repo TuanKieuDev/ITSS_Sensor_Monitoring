@@ -55,7 +55,10 @@ class Suggestion extends StatelessWidget {
       children: [
         Text(
           title,
-          style: kBodyText2,
+          style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Color.fromRGBO(221, 88, 214, 1)),
           textAlign: TextAlign.center,
         ),
         const Padding(

@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:temperature_and_humidity_monitoring/const/custom_styles.dart';
 import 'package:temperature_and_humidity_monitoring/models/monitor_model.dart';
-import 'package:temperature_and_humidity_monitoring/widgets/suggestion.dart';
 
 import '../widgets/sensor_card.dart';
 
@@ -18,23 +17,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final fakeData = [
-    {
-      "tempList": <double>[1, 20, 8, 3, 6],
-      "rhList": <double>[15, 60, 70, 3, 50],
-    },
-    {
-      "tempList": <double>[6, 3, 7, 23, 5],
-      "rhList": <double>[3, 9, 3, 5, 1],
-    },
-  ];
-
-  StreamController<MonitorModel> _streamController = StreamController();
+  final StreamController<MonitorModel> _streamController = StreamController();
+  int _value = 1;
 
   @override
   void initState() {
     super.initState();
-    Timer.periodic(const Duration(seconds: 3), (timer) {
+    Timer.periodic(const Duration(seconds: 10), (timer) {
       getApi();
     });
   }
@@ -46,17 +35,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> getApi() async {
-    var url = Uri.parse('https://factus.serveo.net/');
+    var url = Uri.parse('http://192.168.4.2');
+    // var url = Uri.parse("https://libido.serveo.net");
     final response = await http.get(url);
-    final data = json.decode(response.body).first;
-
-    log("called");
+    final data = json.decode(response.body)[_value - 1];
 
     MonitorModel monitorModel = MonitorModel.fromJson(data);
+
     _streamController.sink.add(monitorModel);
   }
-
-  int _value = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -76,8 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final data = snapshots.requireData;
-          final rhList = [data.humidity];
-          final tempList = [data.temperature];
+
+          final advice1 = data.advice.split(":");
+          final advice2 = advice1[1].split(".");
 
           return Scaffold(
             body: SingleChildScrollView(
@@ -97,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        for (int i = 1; i <= fakeData.length; i++)
+                        for (int i = 1; i <= 2; i++)
                           ChoiceChip(
                             label: Text('Chip $i'),
                             labelStyle: TextStyle(
@@ -106,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             selected: _value == i,
                             selectedColor: Colors.blueAccent,
                             onSelected: (bool selected) {
+                              getApi();
                               setState(() {
                                 _value = i;
                               });
@@ -114,12 +103,63 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  _HumidityAndTemperature(rhList: rhList, tempList: tempList),
-                  Text("Feeling like: ${data.feelLike}"),
-                  const Suggestion(
-                    temperature: 8,
-                    humidity: 3,
+                  _HumidityAndTemperature(
+                    humidity: data.humidity,
+                    temperature: data.temperature,
                   ),
+                  const SizedBox(
+                    height: 24,
+                  ),
+                  RichText(
+                    text: TextSpan(
+                      text: 'Feeling like: ',
+                      style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromRGBO(221, 88, 214, 1)),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: '${data.feelLike.round()}°C',
+                          style: const TextStyle(
+                            color: Color.fromRGBO(255, 231, 155, 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Text(
+                      "Last updated: ${DateFormat('jms').format(DateTime.now())}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  // const Suggestion(
+                  //   temperature: 8,
+                  //   humidity: 3,
+                  // ),
+                  Text(
+                    advice1[0],
+                    style: const TextStyle(
+                      color: Color.fromRGBO(147, 54, 180, 1),
+                      fontSize: 25,
+                    ),
+                  ),
+                  for (int i = 0; i < advice2.length; i++)
+                    if (advice2[i].isNotEmpty)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "- ${advice2[i]}\n",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
                 ],
               ),
             ),
@@ -130,43 +170,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _HumidityAndTemperature extends StatelessWidget {
   const _HumidityAndTemperature({
-    required this.rhList,
-    required this.tempList,
+    required this.humidity,
+    required this.temperature,
   });
 
-  final List<double> rhList;
-  final List<double> tempList;
+  final double humidity;
+  final double temperature;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         SensorCard(
-          value:
-              // data.docs.first.data().humidity,
-              rhList.last,
+          value: humidity,
           unit: '%',
           name: 'Humidity',
           assetImage: const AssetImage(
             'assets/images/humidity_icon.png',
           ),
-          trendData: rhList,
           linePoint: Colors.blueAccent,
         ),
         const SizedBox(
           height: 20,
         ),
         SensorCard(
-          value:
-              // data.docs.first.data().temperature,
-              tempList.last,
+          value: temperature,
           // 10,
           unit: '°C',
           name: 'Temperature',
           assetImage: const AssetImage(
             'assets/images/temperature_icon.png',
           ),
-          trendData: tempList,
           linePoint: Colors.redAccent,
         ),
       ],
